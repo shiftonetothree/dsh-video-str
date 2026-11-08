@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/images/logo.png">
+  <link rel="apple-touch-icon" href="/static/images/logo.png">
+  <script>(function(){var t=localStorage.getItem('zwp-theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.setAttribute('data-theme','dark')}})();</script>
+  <title>ZWMAP 视频字幕规范 | 多语言、双语字幕解决方案 - ZWPlayer 文档</title>
+  <meta name="description" content="ZWMAP 视频字幕（Subtitle）协议企业级规范文档详尽解读。深入了解如何基于 ZWMAP 规范同时加载并解析多条并行的 VTT/SRT 外挂字幕轨道，轻松实现网页端无刷新双语字幕切换、全局字幕全文搜索跳转以及个性化字体样式渲染，大幅降低跨国平台的前端适配难度并显著提升跨语言视频受众的观看体验。">
+  <meta name="keywords" content="视频字幕协议, 双语字幕切换, 网页加载SRT, VTT外挂字幕">
+  <link rel="canonical" href="https://www.zwplayer.com/zh/docs/support/zwmap-subtitle-spec.html">
+  <link rel="alternate" hreflang="zh" href="https://www.zwplayer.com/zh/docs/support/zwmap-subtitle-spec.html">
+  <link rel="alternate" hreflang="en" href="https://www.zwplayer.com/docs/support/zwmap-subtitle-spec.html">
+  <link rel="alternate" hreflang="x-default" href="https://www.zwplayer.com/docs/support/zwmap-subtitle-spec.html">
+  <meta property="og:title" content="ZWMAP 视频字幕规范 | 多语言、双语字幕解决方案 - ZWPlayer 文档">
+  <meta property="og:description" content="ZWMAP 视频字幕（Subtitle）协议企业级规范文档详尽解读。深入了解如何基于 ZWMAP 规范同时加载并解析多条并行的 VTT/SRT 外挂字幕轨道，轻松实现网页端无刷新双语字幕切换、全局字幕全文搜索跳转以及个性化字体样式渲染，大幅降低跨国平台的前端适配难度并显著提升跨语言视频受众的观看体验。">
+  <meta property="og:url" content="https://www.zwplayer.com/zh/docs/support/zwmap-subtitle-spec.html">
+  <meta property="og:type" content="article">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:image" content="https://www.zwplayer.com/static/images/og-image.jpg">
+  <meta property="og:site_name" content="ZWPlayer">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ZWMAP 视频字幕规范 | 多语言、双语字幕解决方案 - ZWPlayer 文档">
+  <meta name="twitter:description" content="ZWMAP 视频字幕（Subtitle）协议企业级规范文档详尽解读。深入了解如何基于 ZWMAP 规范同时加载并解析多条并行的 VTT/SRT 外挂字幕轨道，轻松实现网页端无刷新双语字幕切换、全局字幕全文搜索跳转以及个性化字体样式渲染，大幅降低跨国平台的前端适配难度并显著提升跨语言视频受众的观看体验。">
+  <meta name="twitter:image" content="https://www.zwplayer.com/static/images/og-image.jpg">
+  <link rel="stylesheet" href="/zh/static/css/style.css">
+  <link rel="stylesheet" href="/zh/static/css/docs.css">
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "文档",
+            "item": "https://www.zwplayer.com/zh/docs/support/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "ZWMAP 视频字幕规范 | 多语言、双语字幕解决方案"
+          }
+        ]
+      },
+      {
+        "@type": "TechArticle",
+        "headline": "ZWMAP 视频字幕规范 | 多语言、双语字幕解决方案",
+        "description": "ZWMAP 视频字幕（Subtitle）协议企业级规范文档详尽解读。深入了解如何基于 ZWMAP 规范同时加载并解析多条并行的 VTT/SRT 外挂字幕轨道，轻松实现网页端无刷新双语字幕切换、全局字幕全文搜索跳转以及个性化字体样式渲染，大幅降低跨国平台的前端适配难度并显著提升跨语言视频受众的观看体验。",
+        "url": "https://www.zwplayer.com/zh/docs/support/zwmap-subtitle-spec.html",
+        "inLanguage": "zh",
+        "dateModified": "2026-07-01T06:39:20.297Z",
+        "author": {
+          "@type": "Organization",
+          "name": "ZWPlayer"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "ZWPlayer",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.zwplayer.com/static/images/logo.png"
+          }
+        }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-container">
+      <a href="/zh/" class="logo">
+        <img src="/static/images/logo.png" alt="ZWPlayer" class="logo-img">
+      </a>
+  
+      <nav class="main-nav desktop-only">
+        <a href="/zh/" class="nav-item">首页</a>
+  
+        <div class="nav-item has-dropdown">
+          <span>在线工具 ▾</span>
+          <div class="mega-menu">
+            <div class="mega-menu-grid">
+              <a href="/zh/tools/videoplayer/" class="mega-card" target="_blank">
+                <span class="mega-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg></span>
+                <div class="mega-text">
+                  <div class="mega-title">在线播放器</div>
+                  <div class="mega-desc">全协议在线试播与本地文件预览</div>
+                </div>
+              </a>
+              <a href="/zh/tools/generator/" class="mega-card" target="_blank">
+                <span class="mega-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline><line x1="14" y1="4" x2="10" y2="20"></line></svg></span>
+                <div class="mega-text">
+                  <div class="mega-title">代码生成器</div>
+                  <div class="mega-desc">可视化配置播放器参数</div>
+                </div>
+              </a>
+              <a href="/zh/tools/annotation/" class="mega-card" target="_blank">
+                <span class="mega-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path><path d="M9 3v18"></path><circle cx="15" cy="15" r="2"></circle></svg></span>
+                <div class="mega-text">
+                  <div class="mega-title">交互标注编辑器</div>
+                  <div class="mega-desc">可视化拖拽设计视频交互热区</div>
+                </div>
+              </a>
+              <a href="/zh/tools/subtitle/" class="mega-card" target="_blank">
+                <span class="mega-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 16h12"></path><path d="M6 12h12"></path></svg></span>
+                <div class="mega-text">
+                  <div class="mega-title">字幕编辑器</div>
+                  <div class="mega-desc">在线创建与编辑外挂字幕</div>
+                </div>
+              </a>
+              <a href="/zh/tools/chapter/" class="mega-card" target="_blank">
+                <span class="mega-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg></span>
+                <div class="mega-text">
+                  <div class="mega-title">章节编辑器</div>
+                  <div class="mega-desc">为长视频可视化打点分章</div>
+                </div>
+              </a>
+              <a href="/zh/tools/thumbnail/" class="mega-card" target="_blank">
+                <span class="mega-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></span>
+                <div class="mega-text">
+                  <div class="mega-title">缩略图生成器</div>
+                  <div class="mega-desc">纯前端提取视频关键帧生成雪碧图</div>
+                </div>
+              </a>
+              <a href="/zh/tools/playlist/" class="mega-card" target="_blank">
+                <span class="mega-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></span>
+                <div class="mega-text">
+                  <div class="mega-title">播放列表编辑器</div>
+                  <div class="mega-desc">可视化构建分组式播放列表</div>
+                </div>
+              </a>
+              <a href="/zh/tools/watermark/" class="mega-card" target="_blank">
+                <span class="mega-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
+                <div class="mega-text">
+                  <div class="mega-title">水印编辑器</div>
+                  <div class="mega-desc">配置静态与动态防录屏水印</div>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+  
+        <a href="/zh/docs/support/" class="nav-item">开发文档</a>
+        <a href="/zh/plugin/wordpress.html" class="nav-item">WordPress插件</a>
+        <a href="/zh/articles/bloglist.html" class="nav-item">技术博客</a>
+      </nav>
+  
+      <div class="navbar-search" id="search"></div>
+  
+      <div class="header-actions">
+        <div class="lang-switch">
+          <a href="/docs/support/zwmap-subtitle-spec.html" class="lang-link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>EN</a>
+        </div>
+  
+        <button class="mobile-menu-btn mobile-only" aria-label="Open menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+  
+        <button class="docs-nav-btn mobile-only" aria-label="文档导航">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" data-pagefind-ignore>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">
+            概述
+          </div>
+          <ul class="sidebar-items">
+            <li>
+              <a href="/zh/docs/support/overview.html" class="sidebar-link">概述总览</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/overview-name-meaning.html" class="sidebar-link">名称含义</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/overview-features.html" class="sidebar-link">功能特点</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/overview-installation.html" class="sidebar-link">下载安装</a>
+            </li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">
+            使用指南
+          </div>
+          <ul class="sidebar-items">
+            <li>
+              <a href="/zh/docs/support/guide-basic-usage.html" class="sidebar-link">基础使用</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-vue-framework.html" class="sidebar-link">Vue 框架</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-react-framework.html" class="sidebar-link">React 框架</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-configuration.html" class="sidebar-link">参数配置</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-source-url-parameters.html" class="sidebar-link">源地址 URL 参数</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-methods.html" class="sidebar-link">方法</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-events.html" class="sidebar-link">事件</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-subtitle-setup.html" class="sidebar-link">字幕设置</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-danmaku-setup.html" class="sidebar-link">弹幕设置</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-danmaku-server.html" class="sidebar-link">弹幕服务器</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-audio-tracks.html" class="sidebar-link">音轨设置</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-playback-mode.html" class="sidebar-link">播放模式</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-music-mode.html" class="sidebar-link">音乐模式</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-ads.html" class="sidebar-link">贴片广告与暂停广告</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-chapter-markers.html" class="sidebar-link">章节</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-logo-setup.html" class="sidebar-link">Logo 设置</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-watermark-setup.html" class="sidebar-link">水印设置</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-progress-preview.html" class="sidebar-link">进度条预览图</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-annotation.html" class="sidebar-link">交互标注</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-rtsp-stream.html" class="sidebar-link">播放 RTSP 流</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-multi-bitrate.html" class="sidebar-link">多码流节目</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-autoplay-configuration.html" class="sidebar-link">自动播放</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-local-playback.html" class="sidebar-link">本地播放</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-playlist.html" class="sidebar-link">播放列表</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-shortcuts.html" class="sidebar-link">快捷键</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/guide-translate-api.html" class="sidebar-link">字幕翻译 API</a>
+            </li>
+          </ul>
+        </div>
+        <div class="sidebar-section has-active">
+          <div class="sidebar-section-title">
+            ZWMAP 协议规范
+          </div>
+          <ul class="sidebar-items">
+            <li>
+              <a href="/zh/docs/support/zwmap-protocol-overview.html" class="sidebar-link">协议概述</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/zwmap-thumbnail-spec.html" class="sidebar-link">缩略图规范</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/zwmap-chapter-spec.html" class="sidebar-link">章节规范</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/zwmap-subtitle-spec.html" class="sidebar-link active">字幕规范</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/zwmap-annotation-spec.html" class="sidebar-link">标注规范</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/zwmap-playlist-spec.html" class="sidebar-link">播放列表规范</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/zwmap-watermark-spec.html" class="sidebar-link">水印规范</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/zwmap-audiotrack-spec.html" class="sidebar-link">配音音轨规范</a>
+            </li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">
+            演示
+          </div>
+          <ul class="sidebar-items">
+            <li>
+              <a href="/zh/docs/support/demo-basic-usage.html" class="sidebar-link">基础使用</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/demo-logo-setup.html" class="sidebar-link">Logo</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/demo-chapter-markers.html" class="sidebar-link">章节</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/demo-subtitle-setup.html" class="sidebar-link">字幕</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/demo-progress-preview.html" class="sidebar-link">进度条预览图</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/demo-danmaku.html" class="sidebar-link">弹幕</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/demo-supported-protocols.html" class="sidebar-link">协议支持</a>
+            </li>
+            <li>
+              <a href="/zh/docs/support/demo-comprehensive.html" class="sidebar-link">综合演示</a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="content" data-pagefind-body>
+      <div class="breadcrumb" data-pagefind-ignore>
+        <a href="/zh/docs/support/">文档</a>
+        <span class="sep">/</span>
+        <span>ZWMAP 视频字幕规范 | 多语言、双语字幕解决方案</span>
+      </div>
+
+      <article class="markdown-body">
+        <h1 id="zwmap-字幕类型规范" tabindex="-1">ZWMAP 字幕类型规范</h1>
+<h2 id="1-概述" tabindex="-1">1. 概述</h2>
+<p>字幕类型用于描述视频的文本字幕数据，基于 BCC (Bilibili Closed Caption) JSON 格式扩展。仅适用于 JSON 格式的字幕，VTT/SRT 等文本格式不在本规范范围内。使用 <a href="/tools/subtitle/">在线字幕编辑工具</a> 可以创建、翻译和导出多种格式字幕。</p>
+<h2 id="2-zwmap-头部" tabindex="-1">2. ZWMAP 头部</h2>
+<pre class="shiki shiki-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8" tabindex="0"><code class="language-json"><span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "zwp_protocol"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"ZWMAP/1.0"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "zwp_type"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"subtitle"</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span></code></pre>
+<p><code>zwp_protocol</code> 和 <code>zwp_type</code> 为必填字段。<strong>支持向后兼容</strong>，无头部时通过内容特征自动探测。</p>
+<h2 id="3-数据结构" tabindex="-1">3. 数据结构</h2>
+<h3 id="3-1-根级别字段" tabindex="-1">3.1 根级别字段</h3>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>类型</th>
+<th>必填</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>zwp_protocol</code></td>
+<td>string</td>
+<td>是</td>
+<td>—</td>
+<td>协议标识，固定 <code>&quot;ZWMAP/1.0&quot;</code></td>
+</tr>
+<tr>
+<td><code>zwp_type</code></td>
+<td>string</td>
+<td>是</td>
+<td>—</td>
+<td>固定 <code>&quot;subtitle&quot;</code></td>
+</tr>
+<tr>
+<td><code>zwp_version</code></td>
+<td>string</td>
+<td>否</td>
+<td><code>&quot;1.0&quot;</code></td>
+<td>数据格式版本</td>
+</tr>
+<tr>
+<td><code>font_size</code></td>
+<td>number</td>
+<td>否</td>
+<td><code>0.4</code></td>
+<td>字体大小（相对值）</td>
+</tr>
+<tr>
+<td><code>font_color</code></td>
+<td>string</td>
+<td>否</td>
+<td><code>&quot;#FFFFFF&quot;</code></td>
+<td>字体颜色</td>
+</tr>
+<tr>
+<td><code>background_alpha</code></td>
+<td>number</td>
+<td>否</td>
+<td><code>0.5</code></td>
+<td>背景透明度（0-1）</td>
+</tr>
+<tr>
+<td><code>background_color</code></td>
+<td>string</td>
+<td>否</td>
+<td><code>&quot;#000000&quot;</code></td>
+<td>背景颜色</td>
+</tr>
+<tr>
+<td><code>Stroke</code></td>
+<td>string</td>
+<td>否</td>
+<td><code>&quot;none&quot;</code></td>
+<td>描边样式（大写首字母为 BCC 格式历史遗留命名）</td>
+</tr>
+<tr>
+<td><code>body</code></td>
+<td>array</td>
+<td><strong>是</strong></td>
+<td>—</td>
+<td>字幕条目数组</td>
+</tr>
+</tbody>
+</table>
+<h3 id="3-2-字幕条目对象-subtitlecue" tabindex="-1">3.2 字幕条目对象 (SubtitleCue)</h3>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>类型</th>
+<th>必填</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>from</code></td>
+<td>number</td>
+<td><strong>是</strong></td>
+<td>—</td>
+<td>开始时间（秒）</td>
+</tr>
+<tr>
+<td><code>to</code></td>
+<td>number</td>
+<td><strong>是</strong></td>
+<td>—</td>
+<td>结束时间（秒）</td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td>string</td>
+<td><strong>是</strong></td>
+<td>—</td>
+<td>字幕文本内容</td>
+</tr>
+<tr>
+<td><code>location</code></td>
+<td>number</td>
+<td>否</td>
+<td><code>2</code></td>
+<td>显示位置：<code>1</code>=顶部，<code>2</code>=底部</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-完整示例" tabindex="-1">4. 完整示例</h2>
+<pre class="shiki shiki-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8" tabindex="0"><code class="language-json"><span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "zwp_protocol"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"ZWMAP/1.0"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "zwp_type"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"subtitle"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "zwp_version"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"1.0"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "font_size"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">0.4</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "font_color"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"#FFFFFF"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "background_alpha"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">0.5</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "background_color"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"#000000"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "Stroke"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"none"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "body"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: [</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    {</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "from"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">1.0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "to"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">5.0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "content"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"这是第一段字幕"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "location"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    },</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    {</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "from"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">5.5</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "to"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">10.0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "content"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"这是第二段字幕"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "location"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">2</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    },</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    {</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "from"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">10.5</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "to"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">16.1</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "content"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"最后一段字幕"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">      "location"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">1</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">  ]</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span></code></pre>
+<h2 id="5-向后兼容" tabindex="-1">5. 向后兼容</h2>
+<p>无 ZWMAP 头部时，播放器通过检测 <code>body</code> 字段存在且为数组来识别 BCC JSON 旧格式：</p>
+<pre class="shiki shiki-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8" tabindex="0"><code class="language-json"><span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "font_size"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">0.4</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "font_color"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"#FFFFFF"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  "body"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: [</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">    { </span><span style="color:#005CC5;--shiki-dark:#79B8FF">"from"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">1.0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">"to"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#005CC5;--shiki-dark:#79B8FF">5.0</span><span style="color:#24292E;--shiki-dark:#E1E4E8">, </span><span style="color:#005CC5;--shiki-dark:#79B8FF">"content"</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">"字幕文本"</span><span style="color:#24292E;--shiki-dark:#E1E4E8"> }</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">  ]</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span></code></pre>
+<h2 id="6-与其他格式的关系" tabindex="-1">6. 与其他格式的关系</h2>
+<p>ZWPlayer 同时支持以下字幕格式（不使用 ZWMAP 协议头）：</p>
+<table>
+<thead>
+<tr>
+<th>格式</th>
+<th>文件扩展名</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BCC JSON</td>
+<td><code>.bcc</code></td>
+<td>Bilibili 字幕格式，与 ZWMAP subtitle 兼容</td>
+</tr>
+<tr>
+<td>WebVTT</td>
+<td><code>.vtt</code></td>
+<td>W3C 标准字幕格式</td>
+</tr>
+<tr>
+<td>SubRip</td>
+<td><code>.srt</code></td>
+<td>通用字幕格式</td>
+</tr>
+</tbody>
+</table>
+<p>当文件以 <code>.bcc</code> 扩展名提供时，播放器按 JSON 格式解析。ZWMAP 格式是 BCC JSON 的超集。</p>
+<h2 id="7-约束规则" tabindex="-1">7. 约束规则</h2>
+<ol>
+<li><code>body</code> 数组不得为空</li>
+<li>每个条目的 <code>from</code> 必须小于 <code>to</code></li>
+<li>条目之间的时间范围可以重叠（用于多位置显示）</li>
+<li><code>content</code> 支持纯文本，不支持 HTML 标签</li>
+<li><code>location</code> 仅支持 <code>1</code>（顶部）和 <code>2</code>（底部）</li>
+<li>时间精度为浮点数秒，支持小数</li>
+</ol>
+
+      </article>
+
+      <div class="page-nav" data-pagefind-ignore>
+        <a href="/zh/docs/support/zwmap-chapter-spec.html" class="page-prev">
+          <span class="label">上一页</span>
+          <span class="title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            章节规范
+          </span>
+        </a>
+        <a href="/zh/docs/support/zwmap-annotation-spec.html" class="page-next">
+          <span class="label">下一页</span>
+          <span class="title">
+            标注规范
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </span>
+        </a>
+      </div>
+    </main>
+
+    <aside class="toc" data-pagefind-ignore>
+      <div class="toc-title">本页目录</div>
+      <nav class="toc-nav">
+        <a href="#1-概述" class="toc-h2">1. 概述</a>
+        <a href="#2-zwmap-头部" class="toc-h2">2. ZWMAP 头部</a>
+        <a href="#3-数据结构" class="toc-h2">3. 数据结构</a>
+        <a href="#3-1-根级别字段" class="toc-h3">3.1 根级别字段</a>
+        <a href="#3-2-字幕条目对象-subtitlecue" class="toc-h3">3.2 字幕条目对象 (SubtitleCue)</a>
+        <a href="#4-完整示例" class="toc-h2">4. 完整示例</a>
+        <a href="#5-向后兼容" class="toc-h2">5. 向后兼容</a>
+        <a href="#6-与其他格式的关系" class="toc-h2">6. 与其他格式的关系</a>
+        <a href="#7-约束规则" class="toc-h2">7. 约束规则</a>
+      </nav>
+    </aside>
+  </div>
+
+
+  <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+  </button>
+
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h3>联系我们</h3>
+          <ul>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              19311616252
+            </li>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              <a href="mailto:contact@zwplayer.com">contact@zwplayer.com</a>
+            </li>
+            <li>
+              <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">湘ICP备2026016689号-3</a>
+            </li>
+          </ul>
+        </div>
+  
+        <div class="footer-col">
+          <h3>网站信息</h3>
+          <ul>
+            <li><a href="/zh/pages/company/changelog.html">更新日志</a></li>
+            <li><a href="/zh/pages/company/about.html">关于我们</a></li>
+            <li><a href="/zh/pages/company/disclaimer.html">免责申明</a></li>
+            <li><a href="/zh/sitemap.html">网站地图</a></li>
+          </ul>
+        </div>
+  
+        <div class="footer-col">
+          <h3>快速链接</h3>
+          <ul>
+            <li><a href="/zh/docs/support/guide-configuration.html">配置参数</a></li>
+            <li><a href="/zh/docs/support/guide-rtsp-stream.html">RTSP 方案</a></li>
+            <li><a href="/zh/docs/support/guide-vue-framework.html">Vue 组件</a></li>
+            <li><a href="/zh/plugin/wordpress.html">WordPress 插件</a></li>
+          </ul>
+        </div>
+  
+        <div class="footer-col">
+          <h3>技术支持</h3>
+          <div class="footer-qr-wrapper">
+            <div class="footer-qr-item">
+              <img src="/static/images/wechat.jpg" alt="官方公众号" class="footer-qr-img">
+              <span class="footer-qr-label">官方公众号</span>
+            </div>
+            <div class="footer-qr-item">
+              <img src="/static/images/wechat-tech.jpg" alt="微信技术支持" class="footer-qr-img">
+              <span class="footer-qr-label">微信技术支持</span>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <div class="footer-bottom">
+        <p>Copyright &copy; 2024-2026 - ZWPlayer team. 保留所有权利。</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/zh/static/js/main.js"></script>
+  <script src="/zh/static/js/docs.js"></script>
+  <script src="/zh/static/js/search.js"></script>
+
+  <!-- Analytics (GA / Baidu / Clarity) — production hosts only.
+       Localhost dist previews stay clean: Clarity's collect endpoint rejects
+       localhost origins (CORS error) and GA/Baidu would record test sessions. -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    window._hmt = window._hmt || [];
+    window.clarity = window.clarity || function(){(window.clarity.q = window.clarity.q || []).push(arguments)};
+    (function(){
+      if (!/^(www\.)?zwplayer\.com$/.test(location.hostname)) return;
+      function load(src, async){ var s = document.createElement('script'); if (async) s.async = 1; s.src = src; document.head.appendChild(s); }
+      function gtag(){ dataLayer.push(arguments); }
+      gtag('js', new Date()); gtag('config', 'G-CGEB6X0MS9');
+      load('https://www.googletagmanager.com/gtag/js?id=G-CGEB6X0MS9', true);
+      load('https://hm.baidu.com/hm.js?c01f973c93be0fbb45b218164d2a720a');
+      load('https://www.clarity.ms/tag/wtaieptyin?ref=bwt', true);
+    })();
+  </script>
+</body>
+</html>

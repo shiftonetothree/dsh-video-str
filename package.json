@@ -1,0 +1,44 @@
+{
+  "name": "dsh-video-srt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DSH 插件：让 Agent 直接读取视频网站的字幕（B站/腾讯/优酷/爱奇艺/芒果/抖音等），支持抓取、检索、分页阅读与导出 SRT/VTT/TXT。",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "subtitle",
+    "srt",
+    "vtt",
+    "bilibili",
+    "video"
+  ],
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": ">=0.2.0-rc.2"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.4",
+    "qrcode-generator": "^1.4.4"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  }
+}
