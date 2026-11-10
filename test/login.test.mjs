@@ -25,6 +25,7 @@ import { qrMatrix, qrPng, qrSvg } from '../lib/qr.js'
 import { clearSession, describeCookie, readSession, sessionPath, writeSession } from '../lib/session.js'
 import { apply } from '../index.js'
 import { Config } from '../index.js'
+import { sessionWorkspace } from '../index.js'
 import { harness } from './harness.mjs'
 
 /** Real `fetch`, restored after the suite. */
@@ -63,20 +64,61 @@ function stubFetch(reply) {
   const seen = []
   globalThis.fetch = async (url) => {
     seen.push(String(url))
-    return {
-      ok: true,
-      status: reply.status ?? 200,
-      statusText: 'OK',
-      url: String(url),
-      headers: {
-        get: (name) => (String(name).toLowerCase() === 'content-type' ? 'application/json' : null),
-        getSetCookie: () => reply.cookies ?? [],
-      },
-      text: async () => reply.body,
-      json: async () => JSON.parse(reply.body),
-    }
+    return replyFor(String(url), reply)
   }
   return seen
+}
+
+/**
+ * Replace `fetch` with a queue of canned responses, one per request.
+ *
+ * The last reply repeats, so a background watcher that polls again does not
+ * fall off the end of the queue.
+ *
+ * @param {Array<{status?: number, body: string, cookies?: string[]}>} replies Answers, in order.
+ * @returns {string[]} The requested URLs, filled in as they are called.
+ */
+function stubFetchQueue(replies) {
+  const seen = []
+  let index = 0
+  globalThis.fetch = async (url) => {
+    seen.push(String(url))
+    const reply = replies[Math.min(index, replies.length - 1)]
+    index += 1
+    return replyFor(String(url), reply)
+  }
+  return seen
+}
+
+/**
+ * Build the minimal `Response` shape `lib/http.js` reads.
+ *
+ * @param {string} url Requested URL.
+ * @param {{status?: number, body: string, cookies?: string[]}} reply What to answer.
+ * @returns {any} A response stand-in.
+ */
+function replyFor(url, reply) {
+  return {
+    ok: true,
+    status: reply.status ?? 200,
+    statusText: 'OK',
+    url,
+    headers: {
+      get: (name) => (String(name).toLowerCase() === 'content-type' ? 'application/json' : null),
+      getSetCookie: () => reply.cookies ?? [],
+    },
+    text: async () => reply.body,
+    json: async () => JSON.parse(reply.body),
+  }
+}
+
+/** Poll a predicate until it holds, so a background wait can be observed deterministically. */
+async function waitFor(predicate, timeoutMs = 3000) {
+  const started = Date.now()
+  while (!predicate()) {
+    if (Date.now() - started > timeoutMs) throw new Error('timed out waiting for the background scan')
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
 }
 
 /** A transport context with no retries and no rate limit. */
@@ -365,18 +407,71 @@ test('an unknown action is refused', async () => {
   )
 })
 
-test('start writes a QR image into the workspace and remembers the challenge', async () => {
+test('start writes a QR image into the session workspace and watches the code', async () => {
   stubFetch({
     body: JSON.stringify({ code: 0, data: { url: 'https://account.bilibili.com/scan?qrcode_key=chalk', qrcode_key: 'chalk' } }),
   })
+  const workspace = mkdtempSync(join(tmpdir(), 'video-srt-qr-'))
   const h = mount()
-  const value = await h.tool('video_subtitle_login').execute({ action: 'start' }, { signal: undefined })
-  assert.equal(value.state, 'waiting')
-  assert.equal(value.qrKey, 'chalk')
-  assert.equal(typeof value.image, 'string')
-  assert.ok(existsSync(value.image), `expected ${value.image} to exist`)
-  assert.ok(readFileSync(value.image).length > 100)
-  rmSync(value.image, { force: true })
+  try {
+    const value = await h.tool('video_subtitle_login').execute(
+      { action: 'start' },
+      { signal: undefined, agent: { session: { header: { cwd: workspace } } } },
+    )
+    assert.equal(value.state, 'waiting')
+    assert.equal(value.qrKey, 'chalk')
+    assert.equal(value.watching, true)
+    // Named per attempt: a fixed path would be cached by the chat view and show
+    // a code that already expired.
+    assert.equal(value.image, 'bilibili-login-qr-chalk.png')
+    // The chat can only render what is inside the session workspace, not the
+    // directory the DSH process happens to have been started in.
+    assert.ok(existsSync(join(workspace, value.image)), `expected ${value.image} under ${workspace}`)
+    assert.ok(readFileSync(join(workspace, value.image)).length > 100)
+  } finally {
+    h.effectCleanups.at(-1)?.()
+    rmSync(workspace, { recursive: true, force: true })
+  }
+})
+
+test('sessionWorkspace ignores anything but the session header', () => {
+  assert.equal(sessionWorkspace(undefined), undefined)
+  assert.equal(sessionWorkspace({}), undefined)
+  assert.equal(sessionWorkspace({ agent: { session: { header: {} } } }), undefined)
+  assert.equal(sessionWorkspace({ agent: { session: { header: { cwd: '   ' } } } }), undefined)
+  assert.equal(sessionWorkspace({ agent: { session: { header: { cwd: 'F:/code/video-srt' } } } }), 'F:/code/video-srt')
+})
+
+test('a scan confirms in the background and wakes the agent without action="poll"', async () => {
+  const workspace = mkdtempSync(join(tmpdir(), 'video-srt-qr-'))
+  stubFetchQueue([
+    { body: JSON.stringify({ code: 0, data: { url: 'https://account.bilibili.com/scan?qrcode_key=watched', qrcode_key: 'watched' } }) },
+    { body: JSON.stringify({ code: 0, data: { code: 0, message: '0', url: 'https://www.bilibili.com' } }), cookies: ['SESSDATA=watched; Path=/'] },
+  ])
+  const wakes = []
+  const h = mount()
+  try {
+    const value = await h.tool('video_subtitle_login').execute(
+      { action: 'start' },
+      {
+        signal: undefined,
+        agent: {
+          followup: (message) => wakes.push(message),
+          session: { header: { cwd: workspace } },
+        },
+      },
+    )
+    assert.equal(value.state, 'waiting')
+
+    await waitFor(() => readSession('bilibili') !== undefined && wakes.length === 1)
+
+    assert.equal(readSession('bilibili')?.cookie, 'SESSDATA=watched')
+    assert.equal(wakes[0].role, 'user')
+    assert.match(wakes[0].content[0].text, /登录成功|已扫码完成/)
+  } finally {
+    h.effectCleanups.at(-1)?.()
+    rmSync(workspace, { recursive: true, force: true })
+  }
 })
 
 test('logout forgets the session', async () => {

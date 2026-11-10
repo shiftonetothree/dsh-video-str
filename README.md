@@ -1,4 +1,4 @@
-# dsh-video-srt
+# @commonworks/dsh-video-str
 
 让 DSH Agent 直接「读」视频网站的字幕：给出一个视频链接，Agent 就能拿到带时间轴的台词文本，用来总结、检索、引用、导出 SRT。
 
@@ -29,9 +29,12 @@ Agent → video_subtitle_get(url)          # 一次完成：识别站点 → 元
 
 ## 快速开始
 
-插件已安装到 `web` profile（`dsh.profile.bundles` 里已追加 `dsh-video-srt`）。**新装的插件需要重启 DSH 才会生效**（同一 profile 下已安装插件的 config 改动是热更新的，但新增依赖不是）。
+```bash
+# 从 npm 安装（推荐）
+dsh plugin --profile web add @commonworks/dsh-video-str
+```
 
-自己重新安装：
+也可以装本地 checkout：
 
 ```bash
 dsh plugin --profile web add link:F:/code/video-srt
@@ -39,12 +42,14 @@ dsh plugin --profile web add link:F:/code/video-srt
 dsh plugin --profile web add link:<本包的绝对路径>
 ```
 
+安装会把 `@commonworks/dsh-video-str` 追加到 `dsh.profile.bundles`。**新装的插件需要重启 DSH 才会生效**（同一 profile 下已安装插件的 config 改动是热更新的，但新增依赖不是）。
+
 确认已挂载：
 
 ```bash
-dsh --profile web --dump-config | findstr video-srt
+dsh --profile web --dump-config | findstr video-str
 # - id: video-srt
-#   name: dsh-video-srt
+#   name: '@commonworks/dsh-video-str'
 ```
 
 重启后，任何会话都能看到 `video_subtitle_*` 工具，系统提示里也会出现该插件的使用说明。
@@ -62,7 +67,7 @@ dsh --profile web --dump-config | findstr video-srt
 | `video_subtitle_parse` | 解析「已经拿到手」的字幕内容：直接贴文本、读工作区文件、或给一个字幕文件 URL。 |
 | `video_site_detect` | 报告某个地址由哪个适配器处理、能不能抓字幕、不能的话原因是什么。 |
 | `video_subtitle_sites` | 列出全部适配站点、哪些能真正返回字幕、cookie 配置状态。 |
-| `video_subtitle_login` | **扫码登录**。为需要登录的站点（目前是 B 站）生成二维码，扫码确认后把登录态持久化，之后字幕请求自动带上。`action` 取 `start` / `poll` / `status` / `logout`。 |
+| `video_subtitle_login` | **扫码登录**。为需要登录的站点（目前是 B 站）生成二维码，并在后台盯着它：用户扫码确认后插件**自动唤醒 Agent** 保存登录态，不用让用户回报「扫完了」，也不用反复轮询。`action` 取 `start` / `poll` / `status` / `logout`。 |
 
 `video_subtitle_get` 与 `_parse` 都接受一个字幕文件的**直链**，这是绕开站点限制的通用出路：
 
@@ -122,11 +127,16 @@ dsh --profile web --dump-config | findstr video-srt
 
 ```
 video_subtitle_login(action="start")   → 返回二维码图片（写在工作区）和 qrKey
-   （用 B 站手机客户端扫码，在手机上点「确认登录」）
-video_subtitle_login(action="poll", key="<上一步的 qrKey>")   → 确认后自动保存登录态
+   （把图片给用户，用 B 站手机客户端扫码，在手机上点「确认登录」）
+   ↓ 插件在后台每 2–3 秒查一次这个码，用户确认或二维码过期时会自动开新一轮通知 Agent
+video_subtitle_login(action="poll", key="<start 的 qrKey>")   → 手动兜底：立刻查一次并保存登录态
 video_subtitle_login(action="status")  → 查看当前生效的登录态来源
 video_subtitle_login(action="logout")  → 删除扫码保存的登录态
 ```
+
+自动等待是默认行为，因为「扫码三秒钟、等三分钟」如果交给模型轮询，用户就得为一次
+`poll` 多付一整轮对话。只有在 watcher 随进程重启丢失、或用户明确要求时，才需要手动
+`poll`（`start` 的返回里带 `watching: true`）。
 
 原理是 B 站官方的 web 扫码接口（`passport.bilibili.com/x/passport-login/web/qrcode/*`），纯服务端 HTTP，不需要浏览器、不需要 geetest。所以它在无头的 Node 宿主里也能用。
 
@@ -202,6 +212,8 @@ lib/
     unsupported.js           无法服务端抓取的站点的适配器工厂
     youku.js douyin.js ixigua.js kuaishou.js weibo.js acfun.js
   login.js                   B 站扫码登录：申请二维码、轮询状态、从两种来源提取 SESSDATA
+  watcher.js                 扫码后台等待循环：确认 / 过期 / 网络抖动 / 主动停止，时钟可注入
+  wake.js                    唤醒问话的 Agent（Agent.followup）；宿主包缺失时手工构造同形消息
   qr.js                      二维码渲染：qrcode-generator 出矩阵，PNG 由 node:zlib 手写
   session.js                 登录态持久化（0600，$DSH_HOME 优先）
 ```
@@ -216,15 +228,17 @@ lib/
 
 ```bash
 npm install          # @deepseek-ai/schemastery（由 profile 提供）与 qrcode-generator（零依赖）
-npm test             # node --test，117 个用例，全部离线
+npm test             # node --test，127 个用例，全部离线
 ```
 
-测试分四层：
+测试分六层：
 
 - `test/subtitle.test.mjs` — 格式层。每个解析器都喂给它最容易出错的那种输入：零长度 cue、含逗号的 ASS 文本、双语 cue 里的换行、带标记的 WebVTT、协议相对地址、错误标注格式的 JSON。
 - `test/sites.test.mjs` — 适配器与签名。MD5/WBI 用官方测试向量逐位校验（`mixinKey`、`w_rid` 都与文档一致）；cookie 合并、URL 升级、站点路由、`Host` 伪装防护。
 - `test/transport.test.mjs` — 端到端，跑在真实的本地 HTTP 服务器上：走真实传输层、真实扫描器、真实工具实现，只有「视频网站」是假的。
-- `test/login.test.mjs` — 扫码登录。把全局 `fetch` 换成假响应，因此真实传输层仍然在跑：轮询状态机（未扫码 / 已扫未确认 / 失效 / 成功）、SESSDATA 的两种来源、session 文件损坏容错与掩码、PNG/矩阵结构、以及 cookie 来源优先级。
+- `test/login.test.mjs` — 扫码登录。把全局 `fetch` 换成假响应，因此真实传输层仍然在跑：轮询状态机（未扫码 / 已扫未确认 / 失效 / 成功）、SESSDATA 的两种来源、session 文件损坏容错与掩码、PNG/矩阵结构、cookie 来源优先级，以及「`start` 之后后台自己等到确认并唤醒 Agent」这条端到端路径。
+- `test/watcher.test.mjs` — 后台等待循环，用假时钟驱动：确认只报一次、无人扫码按截止时间超时、服务端报失效、请求失败退避重试、`stop()` 之后两个回调都不再触发。
+- `test/wake.test.mjs` — 唤醒：没有 Agent 时安静返回、消息以 user 角色带 id 进 `followup`、宿主拒绝时不把异常抛进登录流程。
 
 还有一项针对**真实 DSH 运行时**的验证（不在 `npm test` 里，因为它需要宿主提供的 `@deepseek-ai/*` 包）：
 
@@ -265,7 +279,7 @@ node tools/audit-sites.mjs "mgtv=https://www.mgtv.com/b/755558/22865682.html"
 - **空壳页会被识别出来，而不是把站点标题当成视频标题。** 爱奇艺 / 抖音 / 西瓜这类页面会返回 200 + 几十 KB HTML，但里面一个 `og:` 标签都没有，连视频 id 都不出现，`<title>` 只是站点自己的默认标题（例如「爱奇艺-在线视频网站-海量正版高清视频在线观看」）。插件判定为空壳后，标题显示「未能解析标题」、时长显示「未知」，并在说明里讲清楚；`video_subtitle_get` 的报错也会带上这条原因，不会只丢一句 cmd5x 签名。
 - **扫码登录只覆盖 B 站。** 腾讯 / 芒果没有公开的扫码接口；它们的字幕大多不需要登录，只有会员内容才要，收益太低。其他站点仍走配置或环境变量。
 - **登录态是磁盘上的凭据。** `session.json` 以 `0600` 写入，`action="status"` 只回显掩码后的值；但如果你所在的环境连本地凭据文件都不接受，就继续用环境变量而不必用扫码。
-- **二维码 180 秒失效。** `action="start"` 每次都会生成新的 `qrKey`，旧的作废；轮询到 `expired` 就重新生成。
+- **二维码 180 秒失效。** `action="start"` 每次都会生成新的 `qrKey`，旧的作废（旧的后台等待也会被停掉，避免两个码各自报警）；确认或过期时插件会自己唤醒 Agent，Agent 收到「已失效」的通知后再生成新码即可。
 
 ## 许可证
 

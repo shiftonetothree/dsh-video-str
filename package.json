@@ -1,8 +1,7 @@
 {
-  "name": "dsh-video-srt",
-  "version": "0.1.0",
-  "private": true,
-  "description": "DSH 插件：让 Agent 直接读取视频网站的字幕（B站/腾讯/优酷/爱奇艺/芒果/抖音等），支持抓取、检索、分页阅读与导出 SRT/VTT/TXT。",
+  "name": "@commonworks/dsh-video-str",
+  "version": "0.1.1",
+  "description": "DSH 插件：让 Agent 直接读取视频网站的字幕（B站/腾讯/芒果/优酷等），支持扫码登录、抓取、检索、分页阅读与导出 SRT/VTT/TXT。",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -12,6 +11,14 @@
     "bilibili",
     "video"
   ],
+  "homepage": "https://github.com/shiftonetothree/dsh-video-str#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shiftonetothree/dsh-video-str.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shiftonetothree/dsh-video-str/issues"
+  },
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -23,6 +30,9 @@
     "lib",
     "cordis.patch.yml"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

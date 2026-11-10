@@ -1,14 +1,15 @@
-# dsh-video-srt bundle patch.
+# @commonworks/dsh-video-str bundle patch.
 #
 # Inserts this plugin's row into the web profile roster. A bare plugin row by
 # package name: the host half (package "." export) runs in the DSH host process
 # and registers the video_subtitle_* agent tools plus their prompt guidance.
 #
 # Install (from any directory):
-#   dsh plugin --profile web add link:<absolute path to this package>
-# The install appends "dsh-video-srt" to the profile's dsh.profile.bundles and
-# adds the dependency; restart DSH afterwards (a NEW package needs a restart).
-# Verify with:
+#   dsh plugin --profile web add @commonworks/dsh-video-str        # from npm
+#   dsh plugin --profile web add link:<absolute path to this package>   # local checkout
+# The install appends "@commonworks/dsh-video-str" to the profile's
+# dsh.profile.bundles and adds the dependency; restart DSH afterwards (a NEW
+# package needs a restart). Verify with:
 #   dsh --profile web --dump-config
 #
 # Per-row settings live in the profile's own cordis.patch.yml, e.g.:
@@ -21,4 +22,4 @@
 # secret out of the config file.
 - insert:
     - id: video-srt
-      name: dsh-video-srt
+      name: '@commonworks/dsh-video-str'

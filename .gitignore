@@ -1,0 +1,12 @@
+# Dependencies. `@deepseek-ai/*` peers are supplied by the DSH host, so only the
+# declared dependency is installed here (and the profile already provides it).
+# Installed through the DSH profile as `link:`, never through `npm install`.
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+
+# Exported subtitles: the plugin's default export path is `subtitles/`, which is
+# output rather than source.
+subtitles/
+
+*.log

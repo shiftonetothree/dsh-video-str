@@ -18,6 +18,8 @@ import { resolve as resolveSite, roster, supports, generic } from './lib/sites.j
 import { STATE_LABELS, pollQrLogin, startQrLogin } from './lib/login.js'
 import { qrPng } from './lib/qr.js'
 import { clearSession, describeCookie, readSession, sessionPath, writeSession } from './lib/session.js'
+import { watchLogin } from './lib/watcher.js'
+import { notifyAgent } from './lib/wake.js'
 
 /** Cordis plugin name (diagnostics only; the patch row supplies the specifier). */
 export const name = 'dsh-video-srt'
@@ -54,13 +56,13 @@ export const TOOL_NAMES = [
 
 /** Model-facing announcement: what the tools are for and when to reach for them. */
 export const VIDEO_SRT_GUIDANCE = [
-  '本机已安装 dsh-video-srt 插件：让 Agent 直接读到视频网站的字幕文本，不必先下载视频再语音识别。',
+  '本机已安装 @commonworks/dsh-video-str 插件：让 Agent 直接读到视频网站的字幕文本，不必先下载视频再语音识别。',
   '',
   '用户给出视频链接（B站 / 腾讯视频 / 芒果TV / 优酷 / 抖音 / 西瓜 / 快手 / 微博视频 / AcFun，或其他任何站点）并想要「内容/讲了什么/字幕/台词/逐字稿/总结/翻译/某句话在第几分钟」时，先调用 video_subtitle_get，它一次完成「识别站点 → 拿元信息 → 列字幕轨 → 取字幕」，返回视频元信息、字幕摘要和一小段开头。',
   '',
   '长字幕不要整段读进上下文：用 video_subtitle_read 按「页码 / 时间窗 / 字幕序号」取窗口，用 video_subtitle_search 按关键词或正则定位后带上下文取回，用 video_subtitle_text 取压缩后的纯文本（可按段落合并、限制字数）。video_subtitle_export 把字幕写成 SRT/VTT/TXT/LRC/JSON 文件到工作区。',
   '',
-  'B站的字幕列表需要登录：匿名请求会返回空列表并带 need_login_subtitle=true。遇到这种结果要如实告诉用户「需要登录」，不要报告成「这个视频没有字幕」。解决办法有两条，优先第一条：① 用 video_subtitle_login（action="start"）生成二维码，把图片给用户用 B 站手机客户端扫，再用 action="poll" 带上同一个 qrKey 查询结果，确认后登录态会自动保存；② 手动配置 cookies.bilibili（SESSDATA 即可，bili_jct 不需要）或环境变量 DSH_VIDEO_SRT_BILIBILI_COOKIE。',
+  'B站的字幕列表需要登录：匿名请求会返回空列表并带 need_login_subtitle=true。遇到这种结果要如实告诉用户「需要登录」，不要报告成「这个视频没有字幕」。解决办法有两条，优先第一条：① 用 video_subtitle_login（action="start"）生成二维码，把图片给用户用 B 站手机客户端扫——插件会在后台自己盯着这个码，扫完确认后开新一轮通知你、并把登录态保存好，所以不要说「扫完告诉我」，也不要反复 action="poll"；② 手动配置 cookies.bilibili（SESSDATA 即可，bili_jct 不需要）或环境变量 DSH_VIDEO_SRT_BILIBILI_COOKIE。',
   '',
   '各站点的真实能力已经逐站实测过，不要凭站点名气推断：**只有 B站 能真正拿到字幕**（且需登录）。腾讯视频、芒果TV、优酷能拿到元信息（标题/时长），但列不出可用的字幕轨。AcFun、抖音、西瓜、快手、微博视频连元信息都不保证——它们的页面由浏览器 JS 渲染或被访客系统拦截，服务端只拿到空壳，插件会明确说「读不到」。这些情况都应改用通用兜底（video_subtitle_get 传 directUrl，或让用户从浏览器开发者工具复制字幕文件地址），并如实说明限制，绝不要编造字幕内容或标题。',
 ].join('\n')
@@ -363,6 +365,17 @@ export function apply(ctx, config = {}) {
    * never exposed to the model.
    */
   const disposers = []
+
+  /**
+   * Background waits started by `action="start"`, keyed by `qrcode_key`.
+   *
+   * Declared out here, not inside the `if (enabled())` block: the effect below
+   * has to stop them on unload, and a disabled plugin still runs that teardown.
+   *
+   * @type {Map<string, {stop: () => void}>}
+   */
+  const loginWatchers = new Map()
+
   if (enabled()) {
   // ---------------------------------------------------------------------
   // video_subtitle_get — the one-call entry point
@@ -862,11 +875,81 @@ export function apply(ctx, config = {}) {
    */
   const challenges = new Map()
 
+  /** Wake the agent that asked for the QR; silent when there is no agent (scripts, tests). */
+  const wakeAgent = async (agent, text) => {
+    const result = await notifyAgent(agent, text)
+    if (!result.ok && result.error !== 'no agent attached') {
+      // Nothing to roll back: the session is already stored, the agent simply
+      // learns about it on its next turn instead of being woken.
+      ctx.logger?.warn?.(`video-srt: 唤醒 Agent 失败：${result.error}`)
+    }
+  }
+
+  /**
+   * Stop a background wait, if there is one.
+   *
+   * Stopping before a waiter settles is what keeps one login from producing two
+   * reports: a manual `poll` that confirms first, or a plugin unload.
+   *
+   * @param {string} key Challenge key.
+   */
+  const stopLoginWatcher = (key) => {
+    const watcher = loginWatchers.get(key)
+    if (watcher === undefined) return
+    watcher.stop()
+    loginWatchers.delete(key)
+  }
+
+  /**
+   * Watch one QR in the background and report its outcome.
+   *
+   * @param {string} key Challenge key.
+   * @param {unknown} agent The agent that minted the code.
+   * @param {number} expiresAt Epoch ms when the QR dies.
+   */
+  const startLoginWatcher = (key, agent, expiresAt) => {
+    stopLoginWatcher(key)
+    const watcher = watchLogin({
+      key,
+      expiresAt,
+      // A background wait belongs to no tool call, so there is no exec.signal.
+      poll: (polledKey) => pollQrLogin(polledKey, http),
+      onConfirmed: async (result) => {
+        loginWatchers.delete(key)
+        challenges.delete(key)
+        if (result.cookie === undefined) return
+        const stored = writeSession('bilibili', {
+          cookie: result.cookie,
+          ...(result.expiresAt === undefined ? {} : { expiresAt: result.expiresAt }),
+          ...(result.mid === undefined ? {} : { mid: result.mid }),
+        })
+        // The transport caches the cookie per site; drop it so the very next
+        // fetch sees the session this waiter just stored.
+        cookieCache.delete('bilibili')
+        await wakeAgent(
+          agent,
+          `✅ 用户已扫码完成 B 站登录（mid ${result.mid ?? '未知'}），登录态已写入本机 session（${stored.path}）。` +
+            '现在可以直接用 video_subtitle_get 读取 B 站视频字幕；先简短告诉用户登录成功，不要让他再确认一次。',
+        )
+      },
+      onExpired: async (reason) => {
+        loginWatchers.delete(key)
+        challenges.delete(key)
+        const why = reason === 'timeout' ? '用户没有在 3 分钟内扫码' : '二维码已过期'
+        await wakeAgent(
+          agent,
+          `⏳ B 站登录二维码失效（${why}，key ${key.slice(0, 6)}…）。需要重新调用 video_subtitle_login action="start" 生成新码，并告诉用户。`,
+        )
+      },
+    })
+    loginWatchers.set(key, watcher)
+  }
+
   disposers.push(
     register({
       name: 'video_subtitle_login',
       description:
-        'Log in to a site whose caption list needs an account (bilibili today) by scanning a QR code with that site\'s phone app, then persist the session so later calls find the subtitles. Call with action="start" to get a QR code, show that image to the user, and poll it with action="poll" (same key) until it reports a state. Use it when a fetch reported need_login_subtitle=true, or when the user asks why bilibili returns no captions.',
+        'Log in to a site whose caption list needs an account (bilibili today) by scanning a QR code with that site\'s phone app, then persist the session so later calls find the subtitles. Call with action="start" to get a QR code and show that image to the user: the plugin then watches the code in the background and wakes you with the result, so do not ask the user to confirm the scan and do not poll repeatedly. action="poll" is a manual fallback, action="status" reports the effective session, action="logout" forgets it. Use it when a fetch reported need_login_subtitle=true, or when the user asks why bilibili returns no captions.',
       parameters: {
         type: 'object',
         additionalProperties: false,
@@ -875,7 +958,7 @@ export function apply(ctx, config = {}) {
             type: 'string',
             enum: ['start', 'poll', 'status', 'logout'],
             description:
-              'start: mint a QR code (default). poll: report whether it has been scanned yet; pass the key from start. status: which cookie source is in effect. logout: forget the stored session.',
+              'start: mint a QR code (default) and start watching it in the background. poll: report whether it has been scanned yet (manual fallback; pass the key from start). status: which cookie source is in effect. logout: forget the stored session.',
           },
           key: {
             type: 'string',
@@ -898,14 +981,21 @@ export function apply(ctx, config = {}) {
           // of dead handles.
           const now = Date.now()
           for (const [staleKey, challenge] of challenges) {
-            if (challenge.expiresAt <= now) challenges.delete(staleKey)
+            if (challenge.expiresAt <= now) {
+              // Drop the challenge *and* its waiter: an expired one would only
+              // wake the agent to say the code it already replaced is dead.
+              challenges.delete(staleKey)
+              stopLoginWatcher(staleKey)
+            }
           }
           const challenge = await startQrLogin(http, exec.signal)
           let image
           const notes = []
           try {
             const png = await qrPng(challenge.url, { scale: 8, margin: 4 })
-            const written = await writeBinaryFile(ctx, 'bilibili-login-qr.png', png)
+            // A fresh name per attempt: a fixed path is cached by the chat view,
+            // and the agent then shows a code that scans as "已失效".
+            const written = await writeBinaryFile(`bilibili-login-qr-${challenge.key.slice(0, 6)}.png`, png, sessionWorkspace(exec))
             image = written.relative
           } catch (error) {
             // A renderer failure must not sink the login: the URL alone is still
@@ -913,6 +1003,12 @@ export function apply(ctx, config = {}) {
             notes.push(`二维码图片生成失败：${error instanceof Error ? error.message : String(error)}`)
           }
           challenges.set(challenge.key, { ...challenge, ...(image === undefined ? {} : { image }) })
+          // One login, one watcher: an older code that expires later must not
+          // wake the agent to report a QR the user has already replaced.
+          for (const otherKey of [...loginWatchers.keys()]) {
+            if (otherKey !== challenge.key) stopLoginWatcher(otherKey)
+          }
+          startLoginWatcher(challenge.key, exec.agent, challenge.expiresAt)
           return {
             ok: true,
             action,
@@ -923,11 +1019,12 @@ export function apply(ctx, config = {}) {
             image,
             expiresAt: new Date(challenge.expiresAt).toISOString(),
             expiresInSeconds: Math.round((challenge.expiresAt - Date.now()) / 1000),
+            watching: true,
             notes: [
-              '用 B 站手机客户端扫码，并在手机上点「确认登录」。',
-              `二维码约 3 分钟内有效；过期后用 action="start" 重新生成。`,
-              `扫完之后调用 video_subtitle_login（action="poll", key="${challenge.key}"）查询结果。`,
-              ...(image === undefined ? [] : [`二维码图片已写入工作区：${image}`]),
+              '把二维码图片展示给用户，让他用 B 站手机客户端扫码，并在手机上点「确认登录」。',
+              '插件已经在后台盯着这个码：确认后会自动开新一轮通知你，不需要让用户再说「扫完了」，也不要反复 action="poll"。',
+              '二维码约 3 分钟内有效；过期时插件也会通知你，届时用 action="start" 重新生成。',
+              ...(image === undefined ? [] : [`二维码图片：${image}`]),
               ...notes,
             ],
           }
@@ -938,7 +1035,11 @@ export function apply(ctx, config = {}) {
           if (key === '') throw new Error('action="poll" 需要 key（用 action="start" 返回的 qrKey）。')
           const result = await pollQrLogin(key, http, exec.signal)
           if (result.state !== 'confirmed' || result.cookie === undefined) {
-            if (result.state === 'expired') challenges.delete(key)
+            if (result.state === 'expired') {
+              // The manual answer is enough; do not also wake the agent for it.
+              stopLoginWatcher(key)
+              challenges.delete(key)
+            }
             return {
               ok: result.state !== 'unknown',
               action,
@@ -949,7 +1050,7 @@ export function apply(ctx, config = {}) {
               qrKey: key,
               next:
                 result.state === 'waiting' || result.state === 'scanned'
-                  ? '继续轮询（约 2 秒一次），或让用户确认手机上已点「确认登录」。'
+                  ? '后台监视仍在进行：确认或过期时会自动通知你。除非怀疑插件重启丢了 watcher，否则不必继续手动 poll。'
                   : result.state === 'expired'
                     ? '二维码已失效，用 action="start" 重新生成。'
                     : '状态未知，请重新生成二维码或手动配置 cookies.bilibili。',
@@ -961,6 +1062,9 @@ export function apply(ctx, config = {}) {
             ...(result.mid === undefined ? {} : { mid: result.mid }),
           })
           challenges.delete(key)
+          // This call already reported the login; the background waiter must not
+          // wake the agent a second time for the same scan.
+          stopLoginWatcher(key)
           // The transport caches the cookie per site; drop it so the very next
           // fetch sees the session this call just stored.
           cookieCache.delete('bilibili')
@@ -1076,6 +1180,8 @@ export function apply(ctx, config = {}) {
         disposeSection()
         disposeSection = undefined
       }
+      for (const watcher of loginWatchers.values()) watcher.stop()
+      loginWatchers.clear()
       for (const dispose of disposers.splice(0)) dispose()
       cache.clear()
     }
@@ -1349,25 +1455,46 @@ async function writeTextFile(ctx, relative, content, overwrite) {
 }
 
 /**
- * Write a binary file into the workspace.
+ * The directory a session is working in, as the host knows it.
+ *
+ * `process.cwd()` is NOT it: a running DSH is started from its profile
+ * directory, so a file written relative to the cwd lands in
+ * `.dsh/profiles/<name>/` where the chat can never show it (and where it
+ * pollutes the profile). The workspace travels with the session header.
+ *
+ * @param {{agent?: {session?: {header?: {cwd?: unknown}}}} | undefined} exec Tool execution context.
+ * @returns {string|undefined} Absolute workspace path, when there is one.
+ */
+function sessionWorkspace(exec) {
+  try {
+    const cwd = exec?.agent?.session?.header?.cwd
+    return typeof cwd === 'string' && cwd.trim() !== '' ? cwd : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Exported for tests: the workspace lookup is what makes the QR visible in chat. */
+export { sessionWorkspace }
+
+/**
+ * Write a binary file to the workspace.
  *
  * Mirrors {@link writeTextFile}, but takes a Buffer and always overwrites: the
  * login QR is regenerated on demand and a stale image is worse than none.
  *
- * @param {import('@deepseek-ai/cordis').Context} ctx Plugin context.
  * @param {string} relative Workspace-relative path.
  * @param {Buffer} content File bytes.
+ * @param {string} [root] Workspace root; defaults to the process cwd.
  * @returns {Promise<{relative: string, absolute: string}>} Written paths.
  */
-async function writeBinaryFile(ctx, relative, content) {
+async function writeBinaryFile(relative, content, root = process.cwd()) {
   const fs = await import('node:fs/promises')
   const path = await import('node:path')
-  const root = process.cwd()
   const absolute = path.isAbsolute(relative) ? relative : path.resolve(root, relative)
   await fs.mkdir(path.dirname(absolute), { recursive: true })
   await fs.writeFile(absolute, content)
   const relativeOut = absolute.startsWith(root) ? path.relative(root, absolute).split(path.sep).join('/') : absolute
-  void ctx
   return { relative: relativeOut, absolute }
 }
 
@@ -1614,6 +1741,9 @@ function renderLoginResult(value) {
     lines.push('', `二维码内容：${value.qrUrl}`)
     lines.push(`有效期：约 ${value.expiresInSeconds ?? 180} 秒（${value.expiresAt ?? ''} 之前）`)
     lines.push('', `qrKey：${value.qrKey}`)
+    if (value.watching === true) {
+      lines.push('', '插件已在后台等待扫码结果：确认或过期时会自动开启一轮通知你，不用让用户回报「扫完了」，也不用反复 action="poll"。')
+    }
   } else if (value.action === 'poll') {
     lines.push(`扫码状态：${value.label ?? state}`)
     if (value.message) lines.push(`B 站返回：${value.message}`)
